@@ -18,5 +18,5 @@ public:
 private:
     // Normalization factor for unit average power
     // Average power of unnormalized 16-QAM = 10, so scale = 1/√10
-    static constexpr double SCALE = 1.0 / std::sqrt(10.0);
+    static constexpr double SCALE = 0.31622776601683794; // 1.0 / sqrt(10.0)
 };
