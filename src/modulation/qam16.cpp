@@ -2,29 +2,10 @@
 #include <cmath>
 #include <stdexcept>
 
-// 16-QAM Gray-coded constellation
-// I/Q axes each take values {-3, -1, +1, +3}
-// Gray code for I: 00→-3, 01→-1, 11→+1, 10→+3
-// Gray code for Q: same mapping
-// Bit layout: [b0 b1 | b2 b3]  where b0b1 → I, b2b3 → Q
-
 static int gray_to_level(int g) {
-    // 2-bit gray → level index → {-3,-1,+1,+3}
-    // Gray: 00→0, 01→1, 11→2, 10→3
-    int bin = g ^ (g >> 1); // gray to binary
+    int bin = g ^ (g >> 1);
     static const int levels[4] = {-3, -1, 1, 3};
     return levels[bin & 3];
-}
-
-static int level_to_gray(int level) {
-    // {-3,-1,+1,+3} → binary index → gray
-    int idx;
-    if      (level == -3) idx = 0;
-    else if (level == -1) idx = 1;
-    else if (level ==  1) idx = 2;
-    else                  idx = 3;
-    // binary to gray
-    return idx ^ (idx >> 1);
 }
 
 Complex QAM16::constellation(int index) {

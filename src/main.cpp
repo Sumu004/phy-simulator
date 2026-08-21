@@ -14,13 +14,11 @@
 #include "channel.h"
 #include "ber.h"
 
-// ─── OFDM configuration ────────────────────────────────────────────────────
-static const int NFFT       = 64;   // FFT size (64 subcarriers)
-static const int CP_LEN     = 16;   // Cyclic prefix = 1/4 of NFFT
-static const int N_DATA_SC  = 48;   // Data subcarriers (rest are pilots/guard)
-static const int N_OFDM_SYM = 100;  // OFDM symbols per run
+static const int NFFT       = 64;
+static const int CP_LEN     = 16;
+static const int N_DATA_SC  = 48;
+static const int N_OFDM_SYM = 100;
 
-// ─── helpers ───────────────────────────────────────────────────────────────
 void print_usage() {
     std::cout << "\nUsage:\n"
               << "  ./phy_simulator --mod <qpsk|qam16> --snr <dB>\n"
@@ -31,15 +29,12 @@ void print_usage() {
               << "  ./phy_simulator --mod qpsk  --sweep\n\n";
 }
 
-// ─── single simulation run at one SNR point ────────────────────────────────
 BERResult run_simulation(const std::string& mod_scheme, double snr_db) {
-
     int bits_per_sym = (mod_scheme == "qpsk") ? QPSK::BITS_PER_SYMBOL
                                                : QAM16::BITS_PER_SYMBOL;
     int bits_per_ofdm = N_DATA_SC * bits_per_sym;
     int total_bits    = bits_per_ofdm * N_OFDM_SYM;
 
-    // Ensure bits_per_ofdm divisible by bits_per_sym (it always will be here)
     std::vector<int> all_tx_bits = generate_bits(total_bits);
     std::vector<int> all_rx_bits;
     all_rx_bits.reserve(total_bits);
@@ -49,48 +44,36 @@ BERResult run_simulation(const std::string& mod_scheme, double snr_db) {
     AWGNChannel     channel(snr_db);
 
     for (int sym = 0; sym < N_OFDM_SYM; sym++) {
-        // 1. Extract bits for this OFDM symbol
         std::vector<int> bits(all_tx_bits.begin() + sym * bits_per_ofdm,
                               all_tx_bits.begin() + (sym+1) * bits_per_ofdm);
 
-        // 2. Modulate bits → complex symbols
         std::vector<Complex> mod_symbols;
         if (mod_scheme == "qpsk")
             mod_symbols = QPSK::modulate(bits);
         else
             mod_symbols = QAM16::modulate(bits);
 
-        // 3. OFDM transmit (IFFT + cyclic prefix)
         std::vector<Complex> ofdm_signal = tx.transmit(mod_symbols);
-
-        // 4. Channel (AWGN noise)
         std::vector<Complex> rx_signal = channel.transmit(ofdm_signal);
-
-        // 5. OFDM receive (remove CP + FFT)
         std::vector<Complex> rx_symbols = rx.receive(rx_signal);
 
-        // 6. Demodulate symbols → bits
         std::vector<int> rx_bits;
         if (mod_scheme == "qpsk")
             rx_bits = QPSK::demodulate(rx_symbols);
         else
             rx_bits = QAM16::demodulate(rx_symbols);
 
-        // 7. Collect recovered bits
         for (int b : rx_bits) all_rx_bits.push_back(b);
     }
 
     return compute_ber(snr_db, all_tx_bits, all_rx_bits);
 }
 
-// ─── main ──────────────────────────────────────────────────────────────────
 int main(int argc, char* argv[]) {
-
     std::string mod_scheme = "qpsk";
     double      snr_db     = 10.0;
     bool        do_sweep   = false;
 
-    // Parse CLI arguments
     for (int i = 1; i < argc; i++) {
         std::string arg = argv[i];
         if (arg == "--mod" && i+1 < argc) {
@@ -118,7 +101,6 @@ int main(int argc, char* argv[]) {
     std::cout << "OFDM Syms  : " << N_OFDM_SYM << "\n\n";
 
     if (do_sweep) {
-        // ── SNR sweep 0 → 20 dB ──────────────────────────────────────────
         std::cout << std::left
                   << std::setw(12) << "SNR (dB)"
                   << std::setw(15) << "Total Bits"
@@ -143,7 +125,6 @@ int main(int argc, char* argv[]) {
         std::cout << "\nResults saved to results/ber_results.csv\n";
 
     } else {
-        // ── Single SNR point ─────────────────────────────────────────────
         std::cout << "SNR        : " << snr_db << " dB\n\n";
         BERResult r = run_simulation(mod_scheme, snr_db);
 
@@ -151,7 +132,6 @@ int main(int argc, char* argv[]) {
         std::cout << "Errors           : " << r.error_bits  << "\n";
         std::cout << "BER              : " << r.ber         << "\n\n";
 
-        // Also write individual result to CSV for Python plotting
         std::ofstream csv("results/ber_results.csv");
         csv << "snr_db,ber,modulation\n";
         csv << r.snr_db << "," << r.ber << "," << mod_scheme << "\n";

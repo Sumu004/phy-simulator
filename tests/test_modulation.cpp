@@ -1,14 +1,3 @@
-/**
- * tests/test_modulation.cpp
- *
- * Lightweight unit tests — no external test framework needed.
- * Build: g++ -std=c++17 -O2 -I../src tests/test_modulation.cpp
- *        ../src/fft.cpp ../src/bit_generator.cpp
- *        ../src/modulation/qpsk.cpp ../src/modulation/qam16.cpp
- *        ../src/ber.cpp -o run_tests -lm
- * Run:   ./run_tests
- */
-
 #include <iostream>
 #include <vector>
 #include <complex>
@@ -22,7 +11,6 @@
 #include "modulation/qam16.h"
 #include "ber.h"
 
-// ─── Test helpers ────────────────────────────────────────────────────────────
 static int tests_run = 0, tests_passed = 0;
 
 #define TEST(name) \
@@ -32,7 +20,7 @@ static int tests_run = 0, tests_passed = 0;
     do { std::cout << "PASS\n"; tests_passed++; } while(0)
 
 #define FAIL(msg) \
-    do { std::cout << "FAIL — " << msg << "\n"; } while(0)
+    do { std::cout << "FAIL - " << msg << "\n"; } while(0)
 
 #define ASSERT_EQ(a, b) \
     if ((a) != (b)) { FAIL(#a " != " #b); return; }
@@ -42,9 +30,8 @@ static int tests_run = 0, tests_passed = 0;
         FAIL(#a " = " << (a) << ", expected " << (b)); return; \
     }
 
-// ─── FFT tests ───────────────────────────────────────────────────────────────
 void test_fft_roundtrip() {
-    TEST("FFT → IFFT roundtrip");
+    TEST("FFT -> IFFT roundtrip");
     CVector original = {{1,0},{2,0},{3,0},{4,0},{5,0},{6,0},{7,0},{8,0}};
     CVector x = original;
     fft(x);
@@ -69,9 +56,8 @@ void test_fft_known_output() {
     PASS();
 }
 
-// ─── QPSK tests ──────────────────────────────────────────────────────────────
 void test_qpsk_symbol_count() {
-    TEST("QPSK: 8 bits → 4 symbols");
+    TEST("QPSK: 8 bits -> 4 symbols");
     auto bits = std::vector<int>{0,0, 0,1, 1,0, 1,1};
     auto syms = QPSK::modulate(bits);
     ASSERT_EQ((int)syms.size(), 4);
@@ -79,7 +65,7 @@ void test_qpsk_symbol_count() {
 }
 
 void test_qpsk_known_mapping() {
-    TEST("QPSK: 00→(+,+)  01→(-,+)  10→(+,-)  11→(-,-)");
+    TEST("QPSK: 00,01,10,11 constellation mapping");
     double s = 1.0 / std::sqrt(2.0);
     auto bits = std::vector<int>{0,0, 0,1, 1,0, 1,1};
     auto syms = QPSK::modulate(bits);
@@ -94,9 +80,8 @@ void test_qpsk_known_mapping() {
 }
 
 void test_qpsk_roundtrip() {
-    TEST("QPSK: modulate → demodulate = identity (no noise)");
+    TEST("QPSK: modulate -> demodulate = identity (no noise)");
     auto tx_bits = generate_bits(200);
-    // pad to even
     if (tx_bits.size() % 2) tx_bits.push_back(0);
     auto syms    = QPSK::modulate(tx_bits);
     auto rx_bits = QPSK::demodulate(syms);
@@ -106,9 +91,8 @@ void test_qpsk_roundtrip() {
     PASS();
 }
 
-// ─── 16-QAM tests ────────────────────────────────────────────────────────────
 void test_qam16_symbol_count() {
-    TEST("16-QAM: 16 bits → 4 symbols");
+    TEST("16-QAM: 16 bits -> 4 symbols");
     auto bits = generate_bits(16);
     auto syms = QAM16::modulate(bits);
     ASSERT_EQ((int)syms.size(), 4);
@@ -116,9 +100,8 @@ void test_qam16_symbol_count() {
 }
 
 void test_qam16_roundtrip() {
-    TEST("16-QAM: modulate → demodulate = identity (no noise)");
+    TEST("16-QAM: modulate -> demodulate = identity (no noise)");
     auto tx_bits = generate_bits(200);
-    // pad to multiple of 4
     while (tx_bits.size() % 4) tx_bits.push_back(0);
     auto syms    = QAM16::modulate(tx_bits);
     auto rx_bits = QAM16::demodulate(syms);
@@ -129,7 +112,7 @@ void test_qam16_roundtrip() {
 }
 
 void test_qam16_unit_power() {
-    TEST("16-QAM: average constellation power ≈ 1.0");
+    TEST("16-QAM: average constellation power ~ 1.0");
     double total = 0;
     for (int i = 0; i < 16; i++) total += std::norm(QAM16::constellation(i));
     double avg = total / 16.0;
@@ -137,9 +120,8 @@ void test_qam16_unit_power() {
     PASS();
 }
 
-// ─── BER tests ───────────────────────────────────────────────────────────────
 void test_ber_zero() {
-    TEST("BER: identical vectors → 0.0");
+    TEST("BER: identical vectors -> 0.0");
     auto bits = std::vector<int>{1,0,1,1,0,0,1,0};
     auto r = compute_ber(10.0, bits, bits);
     ASSERT_EQ(r.error_bits, 0);
@@ -148,7 +130,7 @@ void test_ber_zero() {
 }
 
 void test_ber_all_wrong() {
-    TEST("BER: all bits flipped → 1.0");
+    TEST("BER: all bits flipped -> 1.0");
     auto tx = std::vector<int>{1,1,1,1};
     auto rx = std::vector<int>{0,0,0,0};
     auto r = compute_ber(0.0, tx, rx);
@@ -157,7 +139,6 @@ void test_ber_all_wrong() {
     PASS();
 }
 
-// ─── main ────────────────────────────────────────────────────────────────────
 int main() {
     std::cout << "\n=== PHY Simulator Unit Tests ===\n\n";
 
@@ -179,14 +160,14 @@ int main() {
     test_ber_zero();
     test_ber_all_wrong();
 
-    std::cout << "\n────────────────────────────────\n";
+    std::cout << "\n--------------------------------\n";
     std::cout << "Results: " << tests_passed << "/" << tests_run << " passed\n";
 
     if (tests_passed == tests_run) {
-        std::cout << "ALL TESTS PASSED ✓\n\n";
+        std::cout << "ALL TESTS PASSED\n\n";
         return 0;
     } else {
-        std::cout << (tests_run - tests_passed) << " TESTS FAILED ✗\n\n";
+        std::cout << (tests_run - tests_passed) << " TESTS FAILED\n\n";
         return 1;
     }
 }
